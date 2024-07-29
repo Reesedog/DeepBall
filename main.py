@@ -1,6 +1,7 @@
 # 安装必要的库
 import pygame
 import numpy as np
+import sympy as sp
 
 pygame.init()
 
@@ -27,22 +28,22 @@ running = True
 
 
 class Player:
-    def __init__(self, position, color):
-        self.position = position
+    def __init__(self, x, y, color):
+        self.position = (x * TILE_SIZE_X, y * TILE_SIZE_Y)
         self.color = color
 
 
 # 定义黑色球员和红色球员的位置
 black_players = [
-    Player((3, 5), BLUE),
-    Player((1, 8), BLUE),
-    Player((1, 2), BLUE)
+    Player(3, 5, BLUE),
+    Player(1, 8, BLUE),
+    Player(1, 2, BLUE)
 ]
 
 red_players = [
-    Player((2, 5), RED),
-    Player((4, 2), RED),
-    Player((4, 8), RED)
+    Player(2, 5, RED),
+    Player(4, 2, RED),
+    Player(4, 8, RED)
 ]
 
 # 合并球员列表
@@ -50,21 +51,22 @@ players = black_players + red_players
 
 
 class Ball:
-    def __init__(self, position, direction):
-        self.position = position
+    def __init__(self, x, y, direction):
+        self.position = (x * TILE_SIZE_X, y * TILE_SIZE_Y)
         self.direction = direction
 
 
 # 定义球的位置和方向
-ball = Ball((3.5, 5), (1, 1))  # 球的位置在 (3, 5)，方向为向右
+ball = Ball(3, 5, (1, 1))  # 球的位置在 (3, 5)，方向为向右
 
 
 # 绘制棋盘
 def draw_board():
     for row in range(BOARD_SIZE_Y):
         for col in range(BOARD_SIZE_X):
-            color = GREEN_ONE if (row + col) % 2 == 0 else GREEN_TWO
-            pygame.draw.rect(screen, color, pygame.Rect(col * TILE_SIZE_X, row * TILE_SIZE_Y, TILE_SIZE_X, TILE_SIZE_Y))
+            color = BLACK
+            pygame.draw.rect(screen, color,
+                             pygame.Rect(col * TILE_SIZE_X, row * TILE_SIZE_Y, TILE_SIZE_X - 2, TILE_SIZE_Y - 2))
 
 
 # 绘制球员
@@ -72,7 +74,7 @@ def draw_players():
     for player in players:
         col, row = player.position
         pygame.draw.circle(screen, player.color,
-                           (col * TILE_SIZE_X, row * TILE_SIZE_Y),
+                           (col, row),
                            TILE_SIZE_Y // 4)
 
 
@@ -80,24 +82,67 @@ def draw_players():
 def draw_ball_and_arrow():
     col, row = ball.position
     pygame.draw.circle(screen, WHITE,
-                       (col * TILE_SIZE_X, row * TILE_SIZE_Y),
+                       (int(col), int(row)),
                        TILE_SIZE_Y // 4)
 
     # 绘制箭头
-    arrow_start = (col * TILE_SIZE_X, row * TILE_SIZE_Y)
-    arrow_end = (arrow_start[0] + ball.direction[0] * TILE_SIZE_Y / 2,
-                 arrow_start[1] + ball.direction[1] * TILE_SIZE_Y / 2)
+    arrow_start = (int(col), int(row))
+    arrow_end = (int(arrow_start[0] + ball.direction[0] * 20),
+                 int(arrow_start[1] + ball.direction[1] * 20))
     pygame.draw.line(screen, WHITE, arrow_start, arrow_end, 5)
     pygame.draw.polygon(screen, WHITE, [
-        (arrow_end[0] + ball.direction[0] * 10, arrow_end[1] + ball.direction[1] * 10),
-        (arrow_end[0] - ball.direction[1] * 10, arrow_end[1] + ball.direction[0] * 10),
-        (arrow_end[0] + ball.direction[1] * 10, arrow_end[1] - ball.direction[0] * 10)
+        (int(arrow_end[0] + ball.direction[0] * 10), int(arrow_end[1] + ball.direction[1] * 10)),
+        (int(arrow_end[0] - ball.direction[1] * 10), int(arrow_end[1] + ball.direction[0] * 10)),
+        (int(arrow_end[0] + ball.direction[1] * 10), int(arrow_end[1] - ball.direction[0] * 10))
     ])
 
 
-# 主游戏循环
-def handle_click(param):
-    pass
+# 处理球的运动逻辑
+def move_ball():
+    x, y = sp.symbols('x y')
+    col, row = ball.position
+    direction = ball.direction
+
+    # 定义球的运动方程
+    line_eq = sp.Eq((y - row) / direction[1], (x - col) / direction[0])
+
+    # 寻找最近的交点
+    intersection_points = []
+    for i in range(BOARD_SIZE_X + 1):
+        x_val = i * TILE_SIZE_X
+        if ball.direction[0] * (x_val - col) > 0:
+            y_val = sp.solve(line_eq.subs(x, x_val), y)[0]
+            if 0 <= y_val <= HEIGHT:
+                intersection_points.append((x_val, y_val))
+                print(col, y_val)
+
+    for j in {0, 10}:
+        if direction[1] != 0:
+            y_val = j * TILE_SIZE_Y
+            if ball.direction[1] * (y_val - row) > 0:
+                x_val = sp.solve(line_eq.subs(y, y_val), x)[0]
+                if (0 <= x_val <= WIDTH) & (x_val != col):
+                    print(row, x_val)
+                    intersection_points.append((x_val, y_val))
+
+    # 找到最近的交点
+    print(intersection_points)
+    next_position = min(intersection_points, key=lambda p: ((p[0] - col) ** 2 + (p[1] - row) ** 2) ** 0.5)
+
+    print(next_position)
+    # 检查碰撞边框
+    if next_position[0] == 0 or next_position[0] == WIDTH:
+        direction = (-direction[0], direction[1])
+    if next_position[1] == 0 or next_position[1] == HEIGHT:
+        direction = (direction[0], -direction[1])
+
+    ball.position = next_position
+    ball.direction = direction
+
+
+# 处理鼠标点击事件
+def handle_click():
+    move_ball()
 
 
 while running:
@@ -105,7 +150,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            handle_click(pygame.mouse.get_pos())
+            handle_click()
 
     screen.fill(GREEN_ONE)
     draw_board()
