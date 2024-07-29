@@ -1,4 +1,3 @@
-# 安装必要的库
 import pygame
 import numpy as np
 import sympy as sp
@@ -25,6 +24,14 @@ WHITE = (255, 255, 255)
 board = np.zeros((BOARD_SIZE_X, BOARD_SIZE_Y), dtype=int)
 
 running = True
+
+# Arrow configurations
+arrow_offsets = {
+    'blue': [(1.7, 0), (1, 1), (1, -1)],
+    'red': [(-1.7, 0), (-1, 1), (-1, -1)]
+}
+
+arrows = []
 
 
 class Player:
@@ -96,9 +103,37 @@ def draw_ball_and_arrow():
         (int(arrow_end[0] + ball.direction[1] * 10), int(arrow_end[1] - ball.direction[0] * 10))
     ])
 
+    for arrow in arrows:
+        draw_arrow(arrow['start'], arrow['end'], arrow['color'])
+
+
+def draw_arrow(start, end, color):
+    pygame.draw.polygon(screen, color, [
+        (int(end[0] + (end[0] - start[0]) * 0.2), int(end[1] + (end[1] - start[1]) * 0.2)),
+        (int(end[0] - (end[1] - start[1]) * 0.2), int(end[1] + (end[0] - start[0]) * 0.2)),
+        (int(end[0] + (end[1] - start[1]) * 0.2), int(end[1] - (end[0] - start[0]) * 0.2))
+    ])
+
+
+def show_arrows(player):
+    global arrows
+    x, y = player.position
+    color = 'blue' if player.color == BLUE else 'red'
+    arrows = []
+    for offset in arrow_offsets[color]:
+        end_x = x + offset[0] * 20
+        end_y = y + offset[1] * 20
+        arrows.append({
+            'start': (x, y),
+            'end': (end_x, end_y),
+            'color': player.color,
+            'direction': offset
+        })
+
 
 # 处理球的运动逻辑
 def move_ball():
+    global arrows
     x, y = sp.symbols('x y')
     col, row = ball.position
     direction = ball.direction
@@ -114,7 +149,6 @@ def move_ball():
             y_val = sp.solve(line_eq.subs(x, x_val), y)[0]
             if 0 <= y_val <= HEIGHT:
                 intersection_points.append((x_val, y_val))
-                print(col, y_val)
 
     for j in {0, 10}:
         if direction[1] != 0:
@@ -122,14 +156,11 @@ def move_ball():
             if ball.direction[1] * (y_val - row) > 0:
                 x_val = sp.solve(line_eq.subs(y, y_val), x)[0]
                 if (0 <= x_val <= WIDTH) & (x_val != col):
-                    print(row, x_val)
                     intersection_points.append((x_val, y_val))
 
     # 找到最近的交点
-    print(intersection_points)
     next_position = min(intersection_points, key=lambda p: ((p[0] - col) ** 2 + (p[1] - row) ** 2) ** 0.5)
 
-    print(next_position)
     # 检查碰撞边框
     if next_position[0] == 0 or next_position[0] == WIDTH:
         direction = (-direction[0], direction[1])
@@ -139,9 +170,20 @@ def move_ball():
     ball.position = next_position
     ball.direction = direction
 
+    for p in players:
+        if ((p.position[0] - ball.position[0]) ** 2 + (p.position[1] - ball.position[1]) ** 2) ** 0.5 < 40:
+            print("shoot!!!!!")
+            show_arrows(p)
+            break
+
 
 # 处理鼠标点击事件
-def handle_click():
+def handle_click(pos):
+    global ball
+    x, y = pos
+
+    arrows.clear()
+
     move_ball()
 
 
@@ -150,7 +192,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            handle_click()
+            handle_click(pygame.mouse.get_pos())
 
     screen.fill(GREEN_ONE)
     draw_board()
