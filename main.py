@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 import sympy as sp
+import random
 
 pygame.init()
 
@@ -27,8 +28,13 @@ running = True
 
 # Arrow configurations
 arrow_offsets = {
-    'blue': [(1.7, 0), (1, 1), (1, -1)],
-    'red': [(-1.7, 0), (-1, 1), (-1, -1)]
+    BLUE: [(1.7, 0), (1, 1), (1, -1)],
+    RED: [(-1.7, 0), (-1, 1), (-1, -1)]
+}
+
+new_directions = {
+    BLUE: [(1, 0), (1, 1), (1, -1)],
+    RED: [(-1, 0), (-1, 1), (-1, -1)]
 }
 
 arrows = []
@@ -64,7 +70,7 @@ class Ball:
 
 
 # 定义球的位置和方向
-ball = Ball(3, 5, (1, 1))  # 球的位置在 (3, 5)，方向为向右
+ball = Ball(3, 5, (1, 0))  # 球的位置在 (3, 5)，方向为向右
 
 
 # 绘制棋盘
@@ -118,9 +124,8 @@ def draw_arrow(start, end, color):
 def show_arrows(player):
     global arrows
     x, y = player.position
-    color = 'blue' if player.color == BLUE else 'red'
     arrows = []
-    for offset in arrow_offsets[color]:
+    for offset in arrow_offsets[player.color]:
         end_x = x + offset[0] * 20
         end_y = y + offset[1] * 20
         arrows.append({
@@ -139,16 +144,18 @@ def move_ball():
     direction = ball.direction
 
     # 定义球的运动方程
-    line_eq = sp.Eq((y - row) / direction[1], (x - col) / direction[0])
+    line_eq = sp.Eq((y - row) * direction[0], (x - col) * direction[1])
 
     # 寻找最近的交点
     intersection_points = []
     for i in range(BOARD_SIZE_X + 1):
-        x_val = i * TILE_SIZE_X
-        if ball.direction[0] * (x_val - col) > 0:
-            y_val = sp.solve(line_eq.subs(x, x_val), y)[0]
-            if 0 <= y_val <= HEIGHT:
-                intersection_points.append((x_val, y_val))
+        if direction[0] != 0:
+            x_val = i * TILE_SIZE_X
+            if ball.direction[0] * (x_val - col) > 0:
+                print(line_eq)
+                y_val = sp.solve(line_eq.subs(x, x_val), y)[0]
+                if 0 <= y_val <= HEIGHT:
+                    intersection_points.append((x_val, y_val))
 
     for j in {0, 10}:
         if direction[1] != 0:
@@ -174,6 +181,8 @@ def move_ball():
         if ((p.position[0] - ball.position[0]) ** 2 + (p.position[1] - ball.position[1]) ** 2) ** 0.5 < 40:
             print("shoot!!!!!")
             show_arrows(p)
+            ball.direction = random.choice(new_directions[p.color])
+            print(ball.direction)
             break
 
 
