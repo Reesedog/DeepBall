@@ -146,14 +146,16 @@ def move_ball():
     # 定义球的运动方程
     line_eq = sp.Eq((y - row) * direction[0], (x - col) * direction[1])
 
+    print(ball.position, ball.direction)
+
     # 寻找最近的交点
     intersection_points = []
     for i in range(BOARD_SIZE_X + 1):
         if direction[0] != 0:
             x_val = i * TILE_SIZE_X
             if ball.direction[0] * (x_val - col) > 0:
-                print(line_eq)
                 y_val = sp.solve(line_eq.subs(x, x_val), y)[0]
+                formatted_tuple = tuple(format(x, '.20f') for x in ball.position)
                 if 0 <= y_val <= HEIGHT:
                     intersection_points.append((x_val, y_val))
 
@@ -162,20 +164,25 @@ def move_ball():
             y_val = j * TILE_SIZE_Y
             if ball.direction[1] * (y_val - row) > 0:
                 x_val = sp.solve(line_eq.subs(y, y_val), x)[0]
-                if (0 <= x_val <= WIDTH) & (x_val != col):
+                if 0 <= x_val <= WIDTH:
                     intersection_points.append((x_val, y_val))
 
     # 找到最近的交点
     next_position = min(intersection_points, key=lambda p: ((p[0] - col) ** 2 + (p[1] - row) ** 2) ** 0.5)
 
     # 检查碰撞边框
-    if next_position[0] == 0 or next_position[0] == WIDTH:
+    if next_position[0] == 0 or int(next_position[0]) == WIDTH or next_position[0] == 0.0:
         direction = (-direction[0], direction[1])
-    if next_position[1] == 0 or next_position[1] == HEIGHT:
+    if next_position[1] == 0 or int(next_position[1]) == HEIGHT or next_position[1] == 0.0:
         direction = (direction[0], -direction[1])
 
     ball.position = next_position
     ball.direction = direction
+
+    for p in players:  # to do 边界时随机可以改成二选一, 应该拆除去
+        new_y = p.position[1] + random.choice([-TILE_SIZE_Y, 0, TILE_SIZE_Y])
+        if 0 <= new_y <= HEIGHT:
+            p.position = (p.position[0], new_y)
 
     for p in players:
         if ((p.position[0] - ball.position[0]) ** 2 + (p.position[1] - ball.position[1]) ** 2) ** 0.5 < 40:
@@ -184,6 +191,8 @@ def move_ball():
             ball.direction = random.choice(new_directions[p.color])
             print(ball.direction)
             break
+
+
 
 
 # 处理鼠标点击事件
