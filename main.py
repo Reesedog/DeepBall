@@ -9,6 +9,8 @@ BOARD_SIZE_X = 5
 BOARD_SIZE_Y = 10
 TILE_SIZE_X = 200
 TILE_SIZE_Y = 60
+TOTAL_COUNT = 0
+GOAL_COUNT = 0
 
 WIDTH, HEIGHT = BOARD_SIZE_X * TILE_SIZE_X, BOARD_SIZE_Y * TILE_SIZE_Y
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -138,7 +140,7 @@ def show_arrows(player):
 
 # 处理球的运动逻辑
 def move_ball():
-    global arrows
+    global arrows, GOAL_COUNT
     x, y = sp.symbols('x y')
     col, row = ball.position
     direction = ball.direction
@@ -146,7 +148,7 @@ def move_ball():
     # 定义球的运动方程
     line_eq = sp.Eq((y - row) * direction[0], (x - col) * direction[1])
 
-    print(ball.position, ball.direction)
+    # print(ball.position, ball.direction)
 
     # 寻找最近的交点
     intersection_points = []
@@ -171,9 +173,11 @@ def move_ball():
     next_position = min(intersection_points, key=lambda p: ((p[0] - col) ** 2 + (p[1] - row) ** 2) ** 0.5)
 
     # 检查碰撞边框
-    if next_position[0] == 0 or int(next_position[0]) == WIDTH or next_position[0] == 0.0:
+    if int(next_position[0]) == 0 or int(next_position[0]) == WIDTH:
         direction = (-direction[0], direction[1])
-    if next_position[1] == 0 or int(next_position[1]) == HEIGHT or next_position[1] == 0.0:
+        if 240 <= next_position[1] <= 360:
+            GOAL_COUNT += 1
+    if int(next_position[1]) == 0 or int(next_position[1]) == HEIGHT:
         direction = (direction[0], -direction[1])
 
     ball.position = next_position
@@ -184,15 +188,14 @@ def move_ball():
         if 0 <= new_y <= HEIGHT:
             p.position = (p.position[0], new_y)
 
+
+def move_players():
     for p in players:
         if ((p.position[0] - ball.position[0]) ** 2 + (p.position[1] - ball.position[1]) ** 2) ** 0.5 < 40:
-            print("shoot!!!!!")
+            # print("shoot!!!!!")
             show_arrows(p)
             ball.direction = random.choice(new_directions[p.color])
-            print(ball.direction)
             break
-
-
 
 
 # 处理鼠标点击事件
@@ -201,8 +204,8 @@ def handle_click(pos):
     x, y = pos
 
     arrows.clear()
-
     move_ball()
+    move_players()
 
 
 while running:
@@ -210,7 +213,9 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            TOTAL_COUNT += 1
             handle_click(pygame.mouse.get_pos())
+            print(GOAL_COUNT, TOTAL_COUNT)
 
     screen.fill(GREEN_ONE)
     draw_board()
